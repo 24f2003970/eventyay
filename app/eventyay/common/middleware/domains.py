@@ -156,6 +156,12 @@ class MultiDomainMiddleware:
             # yet. We will show the start page instead of a confusing (to organizers)
             # 404.
             return
+        # Nothing matched ─ if this is a main-domain auth route, serve it directly
+        # so widget iframe login AJAX can complete on the tunnel domain (Claudflare
+        # etc.) without a cross-origin redirect. Also avoids DisallowedHost errors
+        # for signup/forgot links opened from the widget.
+        if resolved.url_name in MAIN_DOMAIN_AUTH_ROUTES:
+            return None
         # This domain is not configured for any event, so we will show a 404.
         # Note that this should not occur on a well-configured host, as the web server
         # should make sure that a domain is configured before serving it (as it needs to
