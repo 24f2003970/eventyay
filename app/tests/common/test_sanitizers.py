@@ -132,6 +132,11 @@ class TestSanitizePageRichText:
         assert 'noreferrer' in result
 
 
+    def test_user_supplied_rel_replaced_with_safe_rel(self) -> None:
+        result = sanitize_page_rich_text('<a href="https://example.com" rel="opener">link</a>')
+        assert result == '<a href="https://example.com" rel="noopener noreferrer">link</a>'
+
+
 class TestSanitizeEmailHtml:
     def test_passthrough_safe_tags(self):
         html = '<p>Hello <strong>world</strong></p>'
