@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
-import { compileScript, parse } from '@vue/compiler-sfc'
+import { compileScript, parse } from 'vue/compiler-sfc'
 import ts from 'typescript'
 import { createRenderer, defineComponent, h, markRaw, nextTick, ref } from 'vue'
 
@@ -129,10 +129,10 @@ test('Tab wraps enabled buttons in either direction', async () => {
     assert.ok(key(panel, 'Tab').prevented)
     assert.ok(m.document.activeElement === buttons[0], 'focus stays in the expected element')
     assert.ok(key(panel, 'Tab', true).prevented)
-    assert.ok(m.document.activeElement === buttons.at(-1, 'focus stays in the expected element'))
+    assert.ok(m.document.activeElement === buttons.at(-1), 'focus stays in the expected element')
     panel.focus()
     key(panel, 'Tab', true)
-    assert.ok(m.document.activeElement === buttons.at(-1, 'focus stays in the expected element'))
+    assert.ok(m.document.activeElement === buttons.at(-1), 'focus stays in the expected element')
   } finally { m.cleanup() }
 })
 
@@ -177,6 +177,71 @@ test('unmounting an open dialog restores focus to its opener', async () => {
     await m.show()
     m.panel().querySelectorAll('button')[0].focus()
     m.cleanup()
+    assert.ok(m.document.activeElement === m.opener)
+  } finally { m.cleanup() }
+})
+
+for (const target of ['close button', 'backdrop', 'cancel button']) {
+  test(`${target} cannot cancel a busy dialog and works again when idle`, async () => {
+    const m = mountDialog()
+    try {
+      m.busy.value = true
+      await m.show()
+      const click = () => {
+        const panel = m.panel()
+        if (target === 'backdrop') panel.parent.props.onClick()
+        else descendants(panel).filter(el => el.type === 'button')[target === 'close button' ? 0 : 1].props.onClick()
+      }
+      click()
+      await nextTick()
+      assert.ok(m.panel(), 'busy dialog must remain open')
+      assert.deepEqual(m.events, [])
+      m.busy.value = false
+      await nextTick()
+      click()
+      await nextTick()
+      assert.equal(m.panel(), undefined)
+      assert.deepEqual(m.events, ['cancel'])
+      assert.ok(m.document.activeElement === m.opener)
+    } finally { m.cleanup() }
+  })
+}
+
+test('becoming busy moves focus off Confirm before disabling it and contains Tab', async () => {
+  const m = mountDialog()
+  try {
+    await m.show()
+    const panel = m.panel(), confirm = descendants(panel).filter(el => el.type === 'button').at(-1)
+    confirm.focus()
+    m.busy.value = true
+    await nextTick()
+    assert.ok(m.document.activeElement === panel, 'focus must not remain on a disabled button')
+    assert.equal(confirm.props.disabled, true)
+    for (const shift of [false, true]) {
+      assert.ok(key(panel, 'Tab', shift).prevented)
+      assert.ok(m.document.activeElement === panel)
+    }
+    m.busy.value = false
+    await nextTick()
+    key(panel, 'Tab', true)
+    assert.ok(m.document.activeElement === confirm)
+    key(panel, 'Escape')
+    await nextTick()
+    assert.deepEqual(m.events, ['cancel'])
+  } finally { m.cleanup() }
+})
+
+test('busy changes while hidden do not steal focus; parent can close a busy dialog', async () => {
+  const m = mountDialog()
+  try {
+    m.busy.value = true
+    await nextTick()
+    assert.ok(m.document.activeElement === m.opener)
+    await m.show()
+    m.dialog.value.close()
+    await nextTick()
+    assert.equal(m.panel(), undefined)
+    assert.deepEqual(m.events, [])
     assert.ok(m.document.activeElement === m.opener)
   } finally { m.cleanup() }
 })

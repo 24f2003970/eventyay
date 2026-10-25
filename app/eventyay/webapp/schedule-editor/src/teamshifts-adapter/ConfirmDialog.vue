@@ -3,7 +3,7 @@
   .ts-confirm-panel(ref="panel", role="dialog", aria-modal="true", :aria-label="title", tabindex="-1", @keydown="onKeydown", @click.stop="")
     .ts-confirm-header
       h3 {{ title }}
-      button.modal-close-btn(type="button", :aria-label="$t('Close')", @click="cancel")
+      button.modal-close-btn(type="button", :aria-label="$t('Close')", :disabled="busy", @click="cancel")
         i.fa.fa-times(aria-hidden="true")
     p.ts-confirm-lead(v-if="lead") {{ lead }}
     p.ts-confirm-error(v-if="error") {{ error }}
@@ -14,7 +14,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onBeforeUnmount, ref } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = defineProps<{
   title: string
@@ -34,6 +34,11 @@ const visible = ref(false)
 const panel = ref<HTMLElement | null>(null)
 let previousFocus: HTMLElement | null = null
 
+// Move focus before the render disables the active button.
+watch(() => props.busy, busy => {
+  if (busy && visible.value) panel.value?.focus()
+})
+
 function show() {
   if (visible.value) return
   previousFocus = document.activeElement as HTMLElement | null
@@ -51,7 +56,7 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     event.preventDefault()
     event.stopPropagation()
-    if (!props.busy) cancel()
+    cancel()
   } else if (event.key === 'Tab') {
     const buttons = panel.value?.querySelectorAll<HTMLElement>('button:not(:disabled)')
     const first = buttons?.[0]
@@ -70,6 +75,7 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 function cancel() {
+  if (props.busy) return
   close()
   emit('cancel')
 }
