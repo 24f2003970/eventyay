@@ -192,9 +192,11 @@ for (const target of ['close button', 'backdrop', 'cancel button']) {
         if (target === 'backdrop') panel.parent.props.onClick()
         else descendants(panel).filter(el => el.type === 'button')[target === 'close button' ? 0 : 1].props.onClick()
       }
+      m.opener.focus()
       click()
       await nextTick()
       assert.ok(m.panel(), 'busy dialog must remain open')
+      assert.ok(m.document.activeElement === m.panel(), 'blocked cancellation must retain dialog focus')
       assert.deepEqual(m.events, [])
       m.busy.value = false
       await nextTick()

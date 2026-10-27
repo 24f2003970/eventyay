@@ -75,7 +75,10 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 function cancel() {
-  if (props.busy) return
+  if (props.busy) {
+    panel.value?.focus()
+    return
+  }
   close()
   emit('cancel')
 }
