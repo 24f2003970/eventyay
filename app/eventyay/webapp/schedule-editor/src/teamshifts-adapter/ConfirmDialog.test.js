@@ -27,7 +27,12 @@ function mountDialog() {
   const element = type => markRaw({
     type, props: {}, children: [], parent: null,
     focus() { document.activeElement = this },
-    querySelectorAll() { return descendants(this).filter(el => el.type === 'button' && !el.props.disabled) },
+    querySelectorAll(selector) {
+      // Model the selector subset used here; reject unsupported syntax instead of silently matching.
+      const match = /^([a-z][a-z0-9-]*)(:not\(:disabled\))?$/.exec(selector)
+      assert.ok(match, `Unsupported test selector: ${selector}`)
+      return descendants(this).filter(el => el.type === match[1] && (!match[2] || !el.props.disabled))
+    },
   })
   const renderer = createRenderer({
     createElement: element,
@@ -74,6 +79,22 @@ function key(panel, value, shiftKey = false) {
   panel.props.onKeydown?.(event)
   return event
 }
+
+test('selector queries distinguish all buttons, enabled buttons and other elements', async () => {
+  const m = mountDialog()
+  try {
+    await m.show()
+    const panel = m.panel()
+    assert.equal(panel.querySelectorAll('button').length, 3)
+    assert.equal(panel.querySelectorAll('button:not(:disabled)').length, 3)
+    assert.deepEqual(panel.querySelectorAll('a'), [])
+    assert.throws(() => panel.querySelectorAll('button['), /Unsupported test selector/)
+    m.busy.value = true
+    await nextTick()
+    assert.equal(panel.querySelectorAll('button').length, 3)
+    assert.deepEqual(panel.querySelectorAll('button:not(:disabled)'), [])
+  } finally { m.cleanup() }
+})
 
 test('opening focuses the labelled dialog; Escape cancels and restores its opener', async () => {
   const m = mountDialog()
