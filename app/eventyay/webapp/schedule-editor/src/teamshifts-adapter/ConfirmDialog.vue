@@ -14,7 +14,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 const props = defineProps<{
   title: string
@@ -84,7 +84,6 @@ function cancel() {
 }
 
 defineExpose({ show, close })
-onBeforeUnmount(close)
 </script>
 
 <style lang="stylus">
