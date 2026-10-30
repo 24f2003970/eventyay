@@ -49,7 +49,9 @@ function show() {
 function close() {
   if (!visible.value) return
   visible.value = false
-  previousFocus?.focus()
+  const opener = previousFocus
+  previousFocus = null
+  opener?.focus()
 }
 
 function onKeydown(event: KeyboardEvent) {
